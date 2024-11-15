@@ -2,48 +2,32 @@ import mongoose, { Types } from "mongoose";
 
 export interface ITest {
   id: string;
-  user_id: mongoose.Types.ObjectId;
-  questions: Array<string>;
-  score: number;
-  completed: boolean;
-  currentDifficulty: number;
-  consecutiveCorrect: number;
+  questions: Array<Types.ObjectId> | string[];
+  url: string;
+  description?: string;
   createdAt?: Date;
   updatedAt?: Date;
 }
 
 const testSchema = new mongoose.Schema(
   {
-    user_id: {
-      type: Types.ObjectId,
-      required: true,
-      ref: "User",
-    },
     questions: {
-      type: Array<String>,
+      type: Array<Types.ObjectId>,
       required: true,
-      nullable: true,
+      ref: "Question",
     },
-    score: {
-      type: Number,
-      required: true,
-    },
-    completed: {
-      type: Boolean,
+    url: {
+      type: String,
       required: true,
     },
-    currentDifficulty: {
-      type: Number,
-      required: true,
-    },
-    consecutiveCorrect: {
-      type: Number,
-      required: true,
+    description: {
+      type: String,
+      required: false,
     },
   },
   {
     timestamps: true,
-    autoIndex: true,
+    autoIndex: true, // Development only
     id: true,
   }
 );

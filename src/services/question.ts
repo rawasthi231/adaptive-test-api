@@ -13,9 +13,10 @@ export default class QuestionService {
   ): Promise<IServiceResponse<IQuestion | null>> {
     try {
       const question = await Question.create({
-        content: data.content,
+        options: data.options,
+        question: data.options,
+        answer: data.answer,
         difficulty: data.difficulty,
-        weight: data.weight,
       });
       return {
         message: "Question created successfully",
@@ -84,24 +85,25 @@ export default class QuestionService {
    */
   async update(id: string, data: Partial<IQuestion>) {
     try {
-      const question = await Question.findOne({ _id: id });
-      if (!question) {
+      const result = await Question.findOne({ _id: id });
+      if (!result) {
         return {
           status: 404,
           message: "Question not found",
         };
       }
 
-      question.content = data.content || question.content;
-      question.difficulty = data.difficulty || question.difficulty;
-      question.weight = data.weight || question.weight;
+      result.question = data.question || result.question;
+      result.difficulty = data.difficulty || result.difficulty;
+      result.options = data.options || result.options;
+      result.answer = data.answer || result.answer;
 
-      await question.save();
+      await result.save();
 
       return {
         status: 202,
         message: "Question updated successfully",
-        data: question,
+        data: result,
       };
     } catch (error) {
       return errorResponse(JSON.stringify(error));

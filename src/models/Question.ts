@@ -2,16 +2,25 @@ import mongoose from "mongoose";
 
 export interface IQuestion {
   id: string;
-  content: string;
+  question: string;
+  options: string[];
+  answer: string;
   difficulty: number;
-  weight: number;
   createdAt?: Date;
   updatedAt?: Date;
 }
 
 const questionSchema = new mongoose.Schema(
   {
-    content: {
+    question: {
+      type: String,
+      required: true,
+    },
+    options: {
+      type: [String],
+      required: true,
+    },
+    answer: {
       type: String,
       required: true,
     },
@@ -21,14 +30,10 @@ const questionSchema = new mongoose.Schema(
       min: 1,
       max: 10,
     },
-    weight: {
-      type: Number,
-      required: true,
-    },
   },
   {
     timestamps: true,
-    autoIndex: true,
+    autoIndex: true, // Development only
     id: true,
   }
 );

@@ -1,12 +1,13 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
+import config from "../config";
+
 import { errorResponse } from "../helpers";
 import { IUser, User } from "../models/User";
 import { IServiceResponse } from "../typings";
-import config from "../config";
 
-export default class UserService {
+export default class AuthService {
   async signup(user: Partial<IUser>): Promise<IServiceResponse<IUser | null>> {
     try {
       const { email, name, password, role } = user;
@@ -40,10 +41,18 @@ export default class UserService {
     }
   }
 
-  async login(
-    email: string,
-    password: string
-  ): Promise<IServiceResponse<IUser | null>> {
+  /**
+   * Logs in a user and returns a token
+   * @param param - email and password
+   * @returns {IServiceResponse<IUser | null>} - User data with token
+   */
+  async login({
+    email,
+    password,
+  }: {
+    email: string;
+    password: string;
+  }): Promise<IServiceResponse<IUser | null>> {
     try {
       const user = await User.findOne({
         email,
@@ -72,14 +81,42 @@ export default class UserService {
         },
         config.jwtSecret!,
         {
-          expiresIn: 24 * 60 * 60 * 7,
+          expiresIn: 24 * 60 * 60 * 7, // 1 week
         }
       );
 
+      delete user.password;
+
       return {
-        message: "User found and logged in successfully",
+        message: "Logged in successfully",
         status: 200,
         data: { ...user, token },
+      };
+    } catch (error) {
+      return errorResponse(JSON.stringify(error));
+    }
+  }
+
+  async logout(userId?: string) {
+    try {
+      const user = await User.findById(userId);
+
+      if (!user) {
+        return {
+          status: 404,
+          message: "User not found",
+          data: null,
+        };
+      }
+
+      await User.findByIdAndUpdate(userId, {
+        token: undefined,
+      });
+
+      return {
+        status: 200,
+        message: "Logged out successfully",
+        data: null,
       };
     } catch (error) {
       return errorResponse(JSON.stringify(error));

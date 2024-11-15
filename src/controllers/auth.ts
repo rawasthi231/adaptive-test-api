@@ -1,19 +1,25 @@
-import { Request, Response, NextFunction } from "express";
+import { NextFunction } from "express";
 
-import UserService from "../services/auth";
-import { IResponse } from "../typings";
+import AuthService from "../services/auth";
 
-export default class TestController {
-  static async signup(req: Request, res: IResponse, next: NextFunction) {
-    const service = new UserService();
+import { IRequest, IResponse } from "../typings";
+
+export default class AuthController {
+  static async signup(req: IRequest, res: IResponse, next: NextFunction) {
+    const service = new AuthService();
     res.data = await service.signup(req.body);
     next();
   }
 
-  static async login(req: Request, res: Response, next: NextFunction) {
-    // Do something
+  static async login(req: IRequest, res: IResponse, next: NextFunction) {
+    const service = new AuthService();
+    res.data = await service.login(req.body);
+    next();
   }
-  static async logout(req: Request, res: Response, next: NextFunction) {
-    // Do something
+
+  static async logout(req: IRequest, res: IResponse, next: NextFunction) {
+    const service = new AuthService();
+    res.data = await service.logout(req.user?.id);
+    next();
   }
 }

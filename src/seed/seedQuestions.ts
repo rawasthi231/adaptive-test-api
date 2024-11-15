@@ -17,12 +17,13 @@ const generateRandomQuestions = (numQuestions: number) => {
 
   for (let i = 0; i < numQuestions; i++) {
     const randomDifficulty = Math.floor(Math.random() * 10) + 1; // Difficulty from 1 to 10
-    const randomWeight = Math.floor(Math.random() * 100) + 1; // Weight from 1 to 100
+    const randomAnswer = Math.floor(Math.random() * 4) + 1; // Answer from 1 to 4
 
     questions.push({
-      content: `Question content for question ${i + 1}`,
-      difficulty: randomDifficulty,
-      weight: randomWeight,
+      question: `Question ${i + 1}`,
+      difficulty: +randomDifficulty,
+      options: ["Option 1", "Option 2", "Option 3", "Option 4"],
+      answer: `Option ${randomAnswer}`,
     });
   }
 

@@ -4,7 +4,7 @@ export interface IUser {
   id: string;
   name: string;
   email: string;
-  password: string;
+  password?: string;
   role: 1 | 2;
   token?: string;
   createdAt?: Date;
@@ -37,7 +37,7 @@ const userSchema = new mongoose.Schema<IUser>(
   },
   {
     timestamps: true,
-    autoIndex: true,
+    autoIndex: true, // Development only
     id: true,
   }
 );

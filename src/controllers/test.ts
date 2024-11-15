@@ -1,21 +1,34 @@
-import { Request, Response, NextFunction } from "express";
+import { Request, NextFunction } from "express";
 
-import UserService from "../services/auth";
+import TestService from "../services/test";
+
+import { IRequest, IResponse } from "../typings";
 
 export default class TestController {
-  static async start(req: Request, res: Response, next: NextFunction) {
-    const service = new UserService();
-    const data = await service.signup(req.body);
-    res.send(data);
+  static async create(req: Request, res: IResponse, next: NextFunction) {
+    const service = new TestService();
+    res.data = await service.create(req.body);
+  }
+  static async start(req: IRequest, res: IResponse, next: NextFunction) {
+    const service = new TestService();
+    res.data = await service.start(req.params.testId, req.user?.id);
   }
 
-  static async getById(req: Request, res: Response, next: NextFunction) {
-    // Do something
+  static async getById(req: Request, res: IResponse, next: NextFunction) {
+    const service = new TestService();
+    res.data = await service.getById(req.params.testId);
   }
-  static async getByUrl(req: Request, res: Response, next: NextFunction) {
-    // Do something
+  static async getByUrl(req: Request, res: IResponse, next: NextFunction) {
+    const service = new TestService();
+    res.data = await service.getByUrl(req.params.testId);
   }
-  static async submitAnswer(req: Request, res: Response, next: NextFunction) {
-    // Do something
+  static async submitAnswer(req: IRequest, res: IResponse, next: NextFunction) {
+    const service = new TestService();
+    res.data = await service.submitAnswer({
+      userId: req.user?.id,
+      testId: req.params.testId,
+      questionId: req.params.questionId,
+      ...req.body,
+    });
   }
 }

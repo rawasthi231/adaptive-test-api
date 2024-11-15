@@ -3,11 +3,18 @@ import { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
 
 import { IUser } from "../models/User";
-import { IResponse } from "../typings";
+import { IRequest, IResponse } from "../typings";
 
+/**
+ * @description - Middleware to authenticate user token
+ * @param {IRequest} req - Request object
+ * @param {IResponse} res - Response object
+ * @param {NextFunction} next - Next function
+ * @returns {void} - Returns void
+ */
 export const authenticate = (
-  req: Request & { user: Partial<IUser> },
-  res: Response,
+  req: IRequest,
+  res: IResponse,
   next: NextFunction
 ) => {
   const token = req.header("Authorization");
@@ -21,21 +28,30 @@ export const authenticate = (
     req.user = decoded.user;
     next();
   } catch (err) {
-    res.status(401).json({ msg: "Token is not valid" });
+    return res.status(401).json({ msg: "Unauthorized" });
   }
 };
 
-export const isAdmin = (
-  req: Request & { user: Partial<IUser> },
-  res: Response,
-  next: NextFunction
-) => {
-  if (req.user.role !== 1) {
+/**
+ * @description - Middleware to authenticate admin user
+ * @param {IRequest} req - Request object
+ * @param {IResponse} res - Response object
+ * @param {NextFunction} next - Next function
+ * @returns {void} - Returns void
+ */
+export const isAdmin = (req: IRequest, res: Response, next: NextFunction) => {
+  if (req.user?.role !== 1) {
     return res.status(403).json({ msg: "Forbidden" });
   }
   next();
 };
 
+/**
+ * @description - Middleware to handle response
+ * @param {Request} _ - Request object
+ * @param {IResponse} res - Response object
+ * @returns {Response} - Returns response
+ */
 export const responseHandler = (_: Request, res: IResponse) => {
   const code = res.data?.status ?? 200;
   delete res.data?.status;
