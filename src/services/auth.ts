@@ -55,9 +55,18 @@ export default class AuthService {
     password: string;
   }): Promise<IServiceResponse<(IUser & { token: string }) | null>> {
     try {
-      const user = await User.findOne({
-        email,
-      });
+      const user = await User.findOne(
+        {
+          email,
+        },
+        {
+          id: 1,
+          email: 1,
+          name: 1,
+          role: 1,
+          password: 1,
+        }
+      );
 
       if (!user) {
         return {

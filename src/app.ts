@@ -60,6 +60,9 @@ class App {
     // Disable the x-powered-by header for security
     this.app.disable("x-powered-by");
 
+    /* This middleware is used to parse incoming cookies from the HTTP request headers. */
+    this.app.use(cookieParser());
+
     // Add cors middleware to the app
     this.app.use(
       cors({
@@ -68,16 +71,13 @@ class App {
         optionsSuccessStatus: 200,
         preflightContinue: false,
         methods: ["GET", "POST", "PUT", "DELETE"],
-        allowedHeaders: ["Content-Type", "Authorization"],
-        exposedHeaders: ["Retry-After"],
+        allowedHeaders: ["Content-Type", "Cookie", "x-api-key"],
+        exposedHeaders: ["x-api-key", "Retry-After"],
       })
     );
 
     // Add rate limiter middleware to the app
     this.app.use(limiter);
-
-    /* This middleware is used to parse incoming cookies from the HTTP request headers. */
-    this.app.use(cookieParser());
 
     // Add the json and urlencoded middleware to the app
     this.app.use(express.json());

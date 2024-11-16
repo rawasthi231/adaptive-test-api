@@ -1,11 +1,41 @@
 import { errorResponse } from "../helpers";
 import { ITest, Test } from "../models/Test";
 import { UserTest } from "../models/UserTest";
-import { IServiceResponse } from "../typings";
+import { IPagenationQuery, IServiceResponse } from "../typings";
 import { IQuestion, Question } from "../models/Question";
 import { UserTestSubmission } from "../models/UserTestSubmission";
 
 export default class TestService {
+  /**
+   * Get all questions from the database
+   * @returns - Promise<IQuestion[] | null>
+   */
+  async getAll({
+    skip,
+    take = 10,
+  }: IPagenationQuery): Promise<IServiceResponse<ITest[] | null>> {
+    try {
+      const total = await Test.countDocuments();
+      const hasMore = total > +skip + take;
+      const tests = await Test.find().skip(skip).limit(take);
+      if (!tests) {
+        return {
+          status: 404,
+          message: "No tests found",
+        };
+      }
+
+      return {
+        status: 200,
+        message: "Tests fetched successfully",
+        data: tests,
+        nextCursor: hasMore ? +skip + take : undefined,
+      };
+    } catch (error) {
+      return errorResponse(JSON.stringify(error));
+    }
+  }
+
   /**
    * Create a new test in the database and return the created test
    * @param data - Test data including questions and description
@@ -15,17 +45,16 @@ export default class TestService {
     try {
       const { questions, description, title } = data;
 
-      const { nanoid } = await import("nanoid");
-
       const newTest = new Test({
         title,
-        questions,
+        questions: (questions as string[]).map((question) =>
+          question.toObjectId()
+        ),
         description,
-        url: nanoid(10),
+        url: Buffer.from(title!).toString("base64"),
       });
 
       await newTest.save();
-
       return {
         status: 201,
         message: "Test created successfully",
@@ -45,29 +74,30 @@ export default class TestService {
   async start(
     testId: string,
     userId?: string
-  ): Promise<IServiceResponse<Array<{ question: IQuestion }> | null>> {
+  ): Promise<IServiceResponse<{ question: IQuestion } | null>> {
     try {
       const test = await Test.findOne({
-        _id: testId,
+        _id: testId.toObjectId(),
       });
       if (!test) {
         return {
           status: 404,
           message: "Test not found",
-          data: null,
         };
       }
 
       const userTest = new UserTest({
-        test_id: test.id,
-        user_id: userId,
+        test_id: testId.toObjectId(),
+        user_id: userId?.toObjectId(),
       });
 
       await userTest.save();
 
       const firstQuestion = await Test.aggregate<{ question: IQuestion }>([
         {
-          $match: { _id: test.id },
+          $match: { _id: testId.toObjectId() },
+        },
+        {
           $lookup: {
             from: "questions",
             let: { questionIds: "$questions" },
@@ -83,15 +113,29 @@ export default class TestService {
                 },
               },
               { $limit: 1 },
+              {
+                $project: {
+                  _id: 0,
+                  id: "$_id",
+                  question: "$question",
+                  difficulty: "$difficulty",
+                  options: "$options",
+                },
+              },
             ],
             as: "questions",
           },
         },
         {
-          $unwind: "$questions",
+          $unwind: { path: "$questions", preserveNullAndEmptyArrays: true },
         },
         {
           $project: {
+            _id: 0,
+            id: "$_id",
+            title: 1,
+            description: 1,
+            url: 1,
             question: "$questions",
           },
         },
@@ -100,7 +144,7 @@ export default class TestService {
       return {
         status: 200,
         message: "Test started successfully",
-        data: firstQuestion,
+        data: firstQuestion.length ? firstQuestion[0] : undefined,
       };
     } catch (error) {
       return errorResponse(JSON.stringify(error));
@@ -130,7 +174,7 @@ export default class TestService {
   > {
     try {
       const questionInfo = await Question.findOne({
-        _id: questionId,
+        _id: questionId.toObjectId(),
       });
 
       if (!questionInfo)
@@ -141,8 +185,8 @@ export default class TestService {
         };
 
       const userTest = await UserTest.findOne({
-        test_id: testId,
-        user_id: userId,
+        test_id: testId.toObjectId(),
+        user_id: userId?.toObjectId(),
       });
 
       if (!userTest)
@@ -214,9 +258,17 @@ export default class TestService {
       let nextQuestion: IQuestion | null = null;
       // If test should not end, fetch next question based on current difficulty
       if (!shouldEndTest) {
-        nextQuestion = await Question.findOne({
-          difficulty: currentDifficulty + (shouldIncreaseDifficulty ? 1 : -1),
-        });
+        nextQuestion = await Question.findOne(
+          {
+            difficulty: currentDifficulty + (shouldIncreaseDifficulty ? 1 : -1),
+          },
+          {
+            id: 1,
+            question: 1,
+            difficulty: 1,
+            options: 1,
+          }
+        );
       }
 
       return {
@@ -239,15 +291,22 @@ export default class TestService {
    */
   async getByUrl(url: string) {
     try {
-      const test = await Test.findOne({
-        url,
-      });
+      const test = await Test.findOne(
+        {
+          url,
+        },
+        {
+          id: 1,
+          description: 1,
+          title: 1,
+          url: 1,
+        }
+      );
 
       if (!test)
         return {
           status: 404,
           message: "Test not found",
-          data: null,
         };
 
       return {
@@ -267,15 +326,22 @@ export default class TestService {
    */
   async getById(testId: string) {
     try {
-      const test = await Test.findOne({
-        _id: testId,
-      });
+      const test = await Test.findOne(
+        {
+          _id: testId.toObjectId(),
+        },
+        {
+          id: 1,
+          description: 1,
+          title: 1,
+          url: 1,
+        }
+      );
 
       if (!test)
         return {
           status: 404,
           message: "Test not found",
-          data: null,
         };
 
       return {

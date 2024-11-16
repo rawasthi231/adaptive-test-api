@@ -70,7 +70,7 @@ export const setCookies = (_: Request, res: IResponse, next: NextFunction) => {
   if (res.token) {
     res.cookie("x-api-key", res.token, {
       httpOnly: true,
-      sameSite: "strict",
+      sameSite: "none",
       maxAge: COOKIE_EXPIRY,
       secure: true,
     });
