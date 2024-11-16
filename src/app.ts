@@ -2,6 +2,7 @@ import express from "express";
 
 import cors from "cors";
 import swaggerJSDoc from "swagger-jsdoc";
+import cookieParser from "cookie-parser";
 
 import { config } from "dotenv";
 import { rateLimit } from "express-rate-limit";
@@ -74,6 +75,9 @@ class App {
 
     // Add rate limiter middleware to the app
     this.app.use(limiter);
+
+    /* This middleware is used to parse incoming cookies from the HTTP request headers. */
+    this.app.use(cookieParser());
 
     // Add the json and urlencoded middleware to the app
     this.app.use(express.json());

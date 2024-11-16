@@ -13,13 +13,19 @@ export default class AuthController {
 
   static async login(req: IRequest, res: IResponse, next: NextFunction) {
     const service = new AuthService();
-    res.data = await service.login(req.body);
+    const { data, ...rest } = await service.login(req.body);
+    if (data && data.token) {
+      res.token = data.token;
+      delete (data as { token?: string }).token;
+    }
+    res.data = { data, ...rest };
     next();
   }
 
   static async logout(req: IRequest, res: IResponse, next: NextFunction) {
     const service = new AuthService();
     res.data = await service.logout(req.user?.id);
+    res.clearCookie("x-api-key");
     next();
   }
 }

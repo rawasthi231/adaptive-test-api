@@ -6,7 +6,6 @@ export interface IUser {
   email: string;
   password?: string;
   role: 1 | 2;
-  token?: string;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -29,10 +28,6 @@ const userSchema = new mongoose.Schema<IUser>(
       type: Number,
       required: true,
       default: 2, // 1 - admin, 2 - user
-    },
-    token: {
-      type: String,
-      required: true,
     },
   },
   {

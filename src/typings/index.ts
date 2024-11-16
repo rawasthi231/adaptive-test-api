@@ -14,6 +14,7 @@ export interface IRequest extends Request {
 }
 
 export interface IResponse extends Response {
+  token?: string;
   data?: IServiceResponse<unknown>;
 }
 

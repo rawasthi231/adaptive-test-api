@@ -1,17 +1,24 @@
-version: "3.8"
+version: '3.8'
 
 services:
-  postgres:
-    image: postgres:16
-    container_name: postgres_container
-    environment:
-      POSTGRES_DB: dummy
-      POSTGRES_USER: postgresAdmin
-      POSTGRES_PASSWORD: postgresPassword
+  mongo:
+    image: mongo:latest
+    container_name: mongodb
     ports:
-      - "5432:5432"
+      - "27017:27017"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - mongo_data:/data/db
+
+  mongo-express:
+    image: mongo-express:latest
+    container_name: mongo_express
+    environment:
+      ME_CONFIG_MONGODB_SERVER: mongo
+      ME_CONFIG_BASICAUTH_USERNAME: ""
+      ME_CONFIG_BASICAUTH_PASSWORD: ""
+    ports:
+      - "8081:8081"
 
 volumes:
-  pgdata:
+  mongo_data:
+    driver: local

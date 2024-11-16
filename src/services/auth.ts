@@ -1,8 +1,6 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
-import config from "../config";
-
 import { errorResponse } from "../helpers";
 import { IUser, User } from "../models/User";
 import { IServiceResponse } from "../typings";
@@ -18,18 +16,21 @@ export default class AuthService {
         return {
           status: 409,
           message: "User already exists",
-          data: null,
         };
       }
+
+      const hashedPassword = await bcrypt.hash(password!.trim(), 8);
 
       const newUser = new User({
         email,
         name,
-        password,
+        password: hashedPassword,
         role,
       });
 
       await newUser.save();
+
+      delete newUser.password;
 
       return {
         status: 201,
@@ -52,7 +53,7 @@ export default class AuthService {
   }: {
     email: string;
     password: string;
-  }): Promise<IServiceResponse<IUser | null>> {
+  }): Promise<IServiceResponse<(IUser & { token: string }) | null>> {
     try {
       const user = await User.findOne({
         email,
@@ -60,39 +61,43 @@ export default class AuthService {
 
       if (!user) {
         return {
-          status: 404,
+          status: 401,
           message: "Email or password is incorrect",
-          data: null,
         };
       }
 
       const checkPassword = await bcrypt.compare(password, user.password!);
+
       if (!checkPassword) {
         return {
           status: 401,
           message: "Email or password is incorrect",
-          data: null,
         };
       }
 
       const token = jwt.sign(
         {
-          id: user.id,
+          user: {
+            id: user.id,
+            role: user.role,
+          },
         },
-        config.jwtSecret!,
+        process.env.JWT_SECRET!,
         {
-          expiresIn: 24 * 60 * 60 * 7, // 1 week
+          expiresIn: "7d", // 7 days
         }
       );
 
-      delete user.password;
+      const userObject = user.toJSON();
+      delete userObject.password;
 
       return {
         message: "Logged in successfully",
         status: 200,
-        data: { ...user, token },
+        data: { ...userObject, token },
       };
     } catch (error) {
+      console.log(error);
       return errorResponse(JSON.stringify(error));
     }
   }
