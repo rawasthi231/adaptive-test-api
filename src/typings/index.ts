@@ -6,6 +6,7 @@ export interface IServiceResponse<T = undefined> {
   data?: T;
   status?: number;
   error?: string;
+  nextCursor?: number;
 }
 
 export interface IRequest extends Request {
@@ -14,4 +15,9 @@ export interface IRequest extends Request {
 
 export interface IResponse extends Response {
   data?: IServiceResponse<unknown>;
+}
+
+export interface IPagenationQuery {
+  skip: number;
+  take?: number;
 }

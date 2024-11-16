@@ -1,6 +1,6 @@
 import { errorResponse } from "../helpers";
 import { IQuestion, Question } from "../models/Question";
-import { IServiceResponse } from "../typings";
+import { IPagenationQuery, IServiceResponse } from "../typings";
 
 export default class QuestionService {
   /**
@@ -32,9 +32,14 @@ export default class QuestionService {
    * Get all questions from the database
    * @returns - Promise<IQuestion[] | null>
    */
-  async getAll(): Promise<IServiceResponse<IQuestion[] | null>> {
+  async getAll({
+    skip,
+    take = 10,
+  }: IPagenationQuery): Promise<IServiceResponse<IQuestion[] | null>> {
     try {
-      const questions = await Question.find();
+      const total = await Question.countDocuments();
+      const hasMore = total > +skip + take;
+      const questions = await Question.find().skip(skip).limit(take);
       if (!questions) {
         return {
           status: 404,
@@ -46,6 +51,7 @@ export default class QuestionService {
         status: 200,
         message: "Questions fetched successfully",
         data: questions,
+        nextCursor: hasMore ? +skip + take : undefined,
       };
     } catch (error) {
       return errorResponse(JSON.stringify(error));

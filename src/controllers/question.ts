@@ -2,7 +2,7 @@ import { NextFunction } from "express";
 
 import QuestionService from "../services/question";
 
-import { IRequest, IResponse } from "../typings";
+import { IPagenationQuery, IRequest, IResponse } from "../typings";
 
 export default class QuestionController {
   static async create(req: IRequest, res: IResponse, next: NextFunction) {
@@ -11,9 +11,9 @@ export default class QuestionController {
     next();
   }
 
-  static async getAll(_: IRequest, res: IResponse, next: NextFunction) {
+  static async getAll(req: IRequest, res: IResponse, next: NextFunction) {
     const service = new QuestionService();
-    res.data = await service.getAll();
+    res.data = await service.getAll(req.query as unknown as IPagenationQuery);
     next();
   }
 

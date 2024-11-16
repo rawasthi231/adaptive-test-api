@@ -1,16 +1,36 @@
 import express from "express";
 
-import { config } from "dotenv";
+import cors from "cors";
 import swaggerJSDoc from "swagger-jsdoc";
+
+import { config } from "dotenv";
+import { rateLimit } from "express-rate-limit";
 
 import * as swaggerUi from "swagger-ui-express";
 
+import router from "./routes";
+
 import { connectDB } from "./config/db";
 import { swaggerDefinition } from "./docs/swagger";
-import router from "./routes";
 import { responseHandler } from "./middlewares";
 
 const swaggerSpec = swaggerJSDoc(swaggerDefinition);
+
+const limiter = rateLimit({
+  windowMs: 30 * 1000, // 30 seconds
+  limit: 30, // limit each IP to 30 requests per windowMs
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  skipFailedRequests: true,
+  keyGenerator: (req) =>
+    (req.ip || req.headers["x-forwarded-for"] || "0.0.0.0") as string,
+  message: () => {
+    return {
+      status: 429,
+      message: "Too many requests",
+    };
+  },
+});
 
 class App {
   public app: express.Application;
@@ -33,9 +53,29 @@ class App {
   }
 
   /**
-   * @defenition - Add the middlewares to the app to parse the request body and urlencoded data
+   * @defenition - Add the middlewares to the app to parse the request body and set the headers
    */
   private middlewares(): void {
+    // Disable the x-powered-by header for security
+    this.app.disable("x-powered-by");
+
+    // Add cors middleware to the app
+    this.app.use(
+      cors({
+        origin: true,
+        credentials: true,
+        optionsSuccessStatus: 200,
+        preflightContinue: false,
+        methods: ["GET", "POST", "PUT", "DELETE"],
+        allowedHeaders: ["Content-Type", "Authorization"],
+        exposedHeaders: ["Retry-After"],
+      })
+    );
+
+    // Add rate limiter middleware to the app
+    this.app.use(limiter);
+
+    // Add the json and urlencoded middleware to the app
     this.app.use(express.json());
     this.app.use(express.urlencoded({ extended: true }));
   }

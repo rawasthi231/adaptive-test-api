@@ -1,5 +1,3 @@
-import { nanoid } from "nanoid";
-
 import { errorResponse } from "../helpers";
 import { ITest, Test } from "../models/Test";
 import { UserTest } from "../models/UserTest";
@@ -13,10 +11,14 @@ export default class TestService {
    * @param data - Test data including questions and description
    * @returns {Promise<IServiceResponse<ITest | null>>} - Test data
    */
-  async create(data: Partial<ITest>) {
+  async create(data: Partial<ITest>): Promise<IServiceResponse<ITest | null>> {
     try {
-      const { questions, description } = data;
+      const { questions, description, title } = data;
+
+      const { nanoid } = await import("nanoid");
+
       const newTest = new Test({
+        title,
         questions,
         description,
         url: nanoid(10),

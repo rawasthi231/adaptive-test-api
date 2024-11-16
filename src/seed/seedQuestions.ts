@@ -9,8 +9,8 @@ config();
 // Connect to MongoDB
 mongoose
   .connect(process.env.MONGO_URI!)
-  .then(() => console.log("Connected to MongoDB"))
-  .catch((err) => console.error("Failed to connect to MongoDB", err));
+  .then(() => console.log("Connected to DB"))
+  .catch((err) => console.error("Failed to connect to DB", err));
 
 const generateRandomQuestions = (numQuestions: number) => {
   const questions = [];

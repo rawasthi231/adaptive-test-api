@@ -18,8 +18,7 @@ export const authenticate = (
   next: NextFunction
 ) => {
   const token = req.header("Authorization");
-  if (!token)
-    return res.status(401).json({ msg: "No token, authorization denied" });
+  if (!token) return res.status(401).send("Unauthorized");
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET!) as {
@@ -28,7 +27,7 @@ export const authenticate = (
     req.user = decoded.user;
     next();
   } catch (err) {
-    return res.status(401).json({ msg: "Unauthorized" });
+    return res.status(401).send("Unauthorized");
   }
 };
 
@@ -41,7 +40,7 @@ export const authenticate = (
  */
 export const isAdmin = (req: IRequest, res: Response, next: NextFunction) => {
   if (req.user?.role !== 1) {
-    return res.status(403).json({ msg: "Forbidden" });
+    return res.status(403).send("Forbidden");
   }
   next();
 };

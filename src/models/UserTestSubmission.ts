@@ -1,6 +1,6 @@
 import mongoose, { Types } from "mongoose";
 
-export interface IUserTest {
+export interface IUserTestSubmission {
   id: string;
   user_test_id: Types.ObjectId;
   question_id: Types.ObjectId;
@@ -43,7 +43,7 @@ userTestSubmissionSchema.set("toJSON", {
   },
 });
 
-export const UserTestSubmission = mongoose.model<IUserTest>(
+export const UserTestSubmission = mongoose.model<IUserTestSubmission>(
   "UserTestSubmission",
   userTestSubmissionSchema
 );

@@ -2,6 +2,7 @@ import mongoose, { Types } from "mongoose";
 
 export interface ITest {
   id: string;
+  title: string;
   questions: Array<Types.ObjectId> | string[];
   url: string;
   description?: string;
@@ -11,6 +12,10 @@ export interface ITest {
 
 const testSchema = new mongoose.Schema(
   {
+    title: {
+      type: String,
+      required: true,
+    },
     questions: {
       type: Array<Types.ObjectId>,
       required: true,
