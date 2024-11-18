@@ -6,10 +6,21 @@ import { isAdmin } from "../middlewares";
 
 const router = express.Router();
 
-router.post("/", isAdmin, TestController.create);
+router
+  .route("/")
+  .all(isAdmin)
+  .post(TestController.create)
+  .get(TestController.getAll);
 
-router.get("/:testId", isAdmin, TestController.getById);
-router.get("/:uniqueURL", TestController.getByUrl);
+router.get("/user/attempted", TestController.getUserTests);
+
+router
+  .route("/:testId")
+  .all(isAdmin)
+  .get(TestController.getById)
+  .delete(TestController.destroy);
+
+router.get("/:uniqueURL/url", TestController.getByUrl);
 router.post("/:testId/start", TestController.start);
 router.post(
   "/:testId/questions/:questionId/answer",

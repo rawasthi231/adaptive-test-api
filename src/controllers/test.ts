@@ -10,6 +10,11 @@ export default class TestController {
     res.data = await service.getAll(req.query as unknown as IPagenationQuery);
     next();
   }
+  static async getUserTests(req: IRequest, res: IResponse, next: NextFunction) {
+    const service = new TestService();
+    res.data = await service.getUserTests(req.user?.id);
+    next();
+  }
   static async create(req: Request, res: IResponse, next: NextFunction) {
     const service = new TestService();
     res.data = await service.create(req.body);
@@ -39,6 +44,12 @@ export default class TestController {
       questionId: req.params.questionId,
       ...req.body,
     });
+    next();
+  }
+
+  static async destroy(req: Request, res: IResponse, next: NextFunction) {
+    const service = new TestService();
+    res.data = await service.destroy(req.params.testId);
     next();
   }
 }

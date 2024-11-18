@@ -1,5 +1,9 @@
 import { Request, Response } from "express";
 import { IUser } from "../models/User";
+import { ITest } from "../models/Test";
+import { IQuestion } from "../models/Question";
+import { IUserTest } from "../models/UserTest";
+import { IUserTestSubmission } from "../models/UserTestSubmission";
 
 export interface IServiceResponse<T = undefined> {
   message: string;
@@ -21,4 +25,16 @@ export interface IResponse extends Response {
 export interface IPagenationQuery {
   skip: number;
   take?: number;
+}
+
+export interface IStartTestResponse extends ITest {
+  question: IQuestion;
+}
+
+export interface IUserTests extends IUserTest {
+  test: ITest;
+  questions: IQuestion[];
+  submittedAnswers: IUserTestSubmission[];
+  correctCount: number;
+  wrongCount: number;
 }

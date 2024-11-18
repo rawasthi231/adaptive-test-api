@@ -91,7 +91,7 @@ const router = express.Router();
  *                   type: string
  *                   example: "Something went wrong! Please try again later."
  */
-router.post("/signup", AuthController.signup);
+router.post("/signup", AuthController.signup, setCookies);
 
 /**
  * @swagger

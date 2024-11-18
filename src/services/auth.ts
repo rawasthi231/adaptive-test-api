@@ -6,7 +6,14 @@ import { IUser, User } from "../models/User";
 import { IServiceResponse } from "../typings";
 
 export default class AuthService {
-  async signup(user: Partial<IUser>): Promise<IServiceResponse<IUser | null>> {
+  /**
+   * Signs up a user and returns a token for the user
+   * @param {Partial<IUser>} user - User data
+   * @returns {IServiceResponse<IUser & { token: string } | null>} - User data with token
+   */
+  async signup(
+    user: Partial<IUser>
+  ): Promise<IServiceResponse<(IUser & { token: string }) | null>> {
     try {
       const { email, name, password, role } = user;
       const existingUser = await User.findOne({
@@ -30,12 +37,26 @@ export default class AuthService {
 
       await newUser.save();
 
-      delete newUser.password;
+      const newUserObject = newUser.toJSON();
+      delete newUserObject.password;
+
+      const token = jwt.sign(
+        {
+          user: {
+            id: user.id,
+            role: user.role,
+          },
+        },
+        process.env.JWT_SECRET!,
+        {
+          expiresIn: "7d", // 7 days
+        }
+      );
 
       return {
         status: 201,
         message: "User created successfully",
-        data: newUser,
+        data: { ...newUserObject, token },
       };
     } catch (error) {
       return errorResponse(JSON.stringify(error));
@@ -45,7 +66,7 @@ export default class AuthService {
   /**
    * Logs in a user and returns a token
    * @param param - email and password
-   * @returns {IServiceResponse<IUser | null>} - User data with token
+   * @returns {IServiceResponse<IUser  & { token: string } | null>} - User data with token
    */
   async login({
     email,
@@ -119,7 +140,6 @@ export default class AuthService {
         return {
           status: 404,
           message: "User not found",
-          data: null,
         };
       }
 
@@ -130,7 +150,6 @@ export default class AuthService {
       return {
         status: 200,
         message: "Logged out successfully",
-        data: null,
       };
     } catch (error) {
       return errorResponse(JSON.stringify(error));

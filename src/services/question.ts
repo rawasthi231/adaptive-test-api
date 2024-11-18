@@ -14,7 +14,7 @@ export default class QuestionService {
     try {
       const question = await Question.create({
         options: data.options,
-        question: data.options,
+        question: data.question,
         answer: data.answer,
         difficulty: data.difficulty,
       });
@@ -39,7 +39,12 @@ export default class QuestionService {
     try {
       const total = await Question.countDocuments();
       const hasMore = total > +skip + take;
-      const questions = await Question.find().skip(skip).limit(take);
+      const questions = await Question.find()
+        .sort({
+          createdAt: -1,
+        })
+        .skip(skip)
+        .limit(take);
       if (!questions) {
         return {
           status: 404,
@@ -136,6 +141,7 @@ export default class QuestionService {
       return {
         status: 200,
         message: "Question deleted successfully",
+        data: true,
       };
     } catch (error) {
       return errorResponse(JSON.stringify(error));

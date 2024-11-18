@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from "express";
 
-import jwt from "jsonwebtoken";
+import jwt, { JwtPayload } from "jsonwebtoken";
 
 import { IUser } from "../models/User";
 import { IRequest, IResponse } from "../typings";
@@ -24,16 +24,19 @@ export const authenticate = (
     return res.status(401).send("Unauthorized");
   }
 
-  const token = cookie.replace("x-api-key=", "");
+  const token = cookie.replace("x-auth-token=", "");
 
   if (!token) return res.status(401).send("Unauthorized");
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as {
+    const { user } = jwt.verify(
+      token as string,
+      process.env.JWT_SECRET!
+    ) as JwtPayload & {
       user: IUser;
     };
 
-    req.user = decoded.user;
+    req.user = user;
     next();
   } catch (err) {
     return res.status(401).send("Unauthorized");
@@ -68,7 +71,8 @@ export const responseHandler = (_: Request, res: IResponse) => {
 
 export const setCookies = (_: Request, res: IResponse, next: NextFunction) => {
   if (res.token) {
-    res.cookie("x-api-key", res.token, {
+    res.setHeader("x-auth-token", res.token);
+    res.cookie("x-auth-token", res.token, {
       httpOnly: true,
       sameSite: "none",
       maxAge: COOKIE_EXPIRY,

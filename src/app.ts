@@ -71,8 +71,8 @@ class App {
         optionsSuccessStatus: 200,
         preflightContinue: false,
         methods: ["GET", "POST", "PUT", "DELETE"],
-        allowedHeaders: ["Content-Type", "Cookie", "x-api-key"],
-        exposedHeaders: ["x-api-key", "Retry-After"],
+        allowedHeaders: ["Content-Type", "Cookie", "x-auth-token"],
+        exposedHeaders: ["x-auth-token", "Retry-After"],
       })
     );
 
@@ -127,3 +127,5 @@ const app = new App();
 
 // Start the server
 app.listen();
+
+export default app;

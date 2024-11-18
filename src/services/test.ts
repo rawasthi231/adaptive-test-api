@@ -1,9 +1,17 @@
 import { errorResponse } from "../helpers";
 import { ITest, Test } from "../models/Test";
-import { UserTest } from "../models/UserTest";
-import { IPagenationQuery, IServiceResponse } from "../typings";
+import { IUserTest, UserTest } from "../models/UserTest";
+import {
+  IPagenationQuery,
+  IServiceResponse,
+  IStartTestResponse,
+  IUserTests,
+} from "../typings";
 import { IQuestion, Question } from "../models/Question";
-import { UserTestSubmission } from "../models/UserTestSubmission";
+import {
+  IUserTestSubmission,
+  UserTestSubmission,
+} from "../models/UserTestSubmission";
 
 export default class TestService {
   /**
@@ -66,6 +74,62 @@ export default class TestService {
   }
 
   /**
+   * Find the next question based on the test ID and difficulty level of the question
+   * @param {string} testId - Test ID
+   * @param {number} difficulty - Difficulty level of the question
+   * @returns {Promise<T[]>} - Next question based on the test ID and difficulty level
+   */
+  async findNextQuestion<T>(testId: string, difficulty = 5): Promise<T[]> {
+    return await Test.aggregate<T>([
+      {
+        $match: { _id: testId.toObjectId() },
+      },
+      {
+        $lookup: {
+          from: "questions",
+          let: { questionIds: "$questions" },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $in: ["$_id", "$$questionIds"] },
+                    { $eq: ["$difficulty", difficulty] },
+                  ],
+                },
+              },
+            },
+            { $limit: 1 },
+            {
+              $project: {
+                _id: 0,
+                id: "$_id",
+                question: "$question",
+                difficulty: "$difficulty",
+                options: "$options",
+              },
+            },
+          ],
+          as: "questions",
+        },
+      },
+      {
+        $unwind: { path: "$questions", preserveNullAndEmptyArrays: true },
+      },
+      {
+        $project: {
+          _id: 0,
+          id: "$_id",
+          title: 1,
+          description: 1,
+          url: 1,
+          question: "$questions",
+        },
+      },
+    ]);
+  }
+
+  /**
    * Start a test for a user by fetching the first question
    * @param testId - Test ID
    * @param userId - User ID
@@ -74,7 +138,7 @@ export default class TestService {
   async start(
     testId: string,
     userId?: string
-  ): Promise<IServiceResponse<{ question: IQuestion } | null>> {
+  ): Promise<IServiceResponse<IStartTestResponse | null>> {
     try {
       const test = await Test.findOne({
         _id: testId.toObjectId(),
@@ -93,58 +157,12 @@ export default class TestService {
 
       await userTest.save();
 
-      const firstQuestion = await Test.aggregate<{ question: IQuestion }>([
-        {
-          $match: { _id: testId.toObjectId() },
-        },
-        {
-          $lookup: {
-            from: "questions",
-            let: { questionIds: "$questions" },
-            pipeline: [
-              {
-                $match: {
-                  $expr: {
-                    $and: [
-                      { $in: ["$_id", "$$questionIds"] },
-                      { $eq: ["$difficulty", 5] },
-                    ],
-                  },
-                },
-              },
-              { $limit: 1 },
-              {
-                $project: {
-                  _id: 0,
-                  id: "$_id",
-                  question: "$question",
-                  difficulty: "$difficulty",
-                  options: "$options",
-                },
-              },
-            ],
-            as: "questions",
-          },
-        },
-        {
-          $unwind: { path: "$questions", preserveNullAndEmptyArrays: true },
-        },
-        {
-          $project: {
-            _id: 0,
-            id: "$_id",
-            title: 1,
-            description: 1,
-            url: 1,
-            question: "$questions",
-          },
-        },
-      ]);
+      const question = await this.findNextQuestion<IStartTestResponse>(testId);
 
       return {
         status: 200,
         message: "Test started successfully",
-        data: firstQuestion.length ? firstQuestion[0] : undefined,
+        data: question.length ? question[0] : undefined,
       };
     } catch (error) {
       return errorResponse(JSON.stringify(error));
@@ -181,7 +199,6 @@ export default class TestService {
         return {
           status: 404,
           message: "Question not found",
-          data: null,
         };
 
       const userTest = await UserTest.findOne({
@@ -193,12 +210,11 @@ export default class TestService {
         return {
           status: 404,
           message: "Test not found for user",
-          data: null,
         };
 
       const userTestSubmission = new UserTestSubmission({
         user_test_id: userTest.id,
-        question_id: questionId,
+        question_id: questionId.toObjectId(),
         answer,
       });
 
@@ -208,7 +224,7 @@ export default class TestService {
       let shouldEndTest = false;
       let shouldIncreaseDifficulty = false;
 
-      let score = userTest.score;
+      let score = userTest.score || 0;
       let currentDifficulty = questionInfo.difficulty;
       let consecutiveCorrect = userTest.consecutiveCorrect;
 
@@ -224,7 +240,7 @@ export default class TestService {
 
       // Check if test should end based on conditions
       const totalAttempts = await UserTestSubmission.countDocuments({
-        $and: [{ user_test_id: userTest.id }],
+        user_test_id: userTest.id,
       });
 
       /**
@@ -241,6 +257,86 @@ export default class TestService {
         shouldEndTest = true;
       }
 
+      // Fetch next question based on current difficulty
+      let nextQuestion: IQuestion | null = null;
+      // If test should not end, fetch next question based on current difficulty
+      if (!shouldEndTest) {
+        [nextQuestion] = await Question.aggregate<IQuestion>([
+          {
+            $lookup: {
+              from: "tests",
+              let: { testId: testId.toObjectId() },
+              pipeline: [
+                {
+                  $match: {
+                    $expr: {
+                      $eq: ["$_id", "$$testId"],
+                    },
+                  },
+                },
+              ],
+              as: "testDetails",
+            },
+          },
+          {
+            $unwind: { path: "$testDetails", preserveNullAndEmptyArrays: true },
+          },
+          {
+            $lookup: {
+              from: "usertestsubmissions",
+              let: { userTestId: userTest.id.toObjectId() },
+              pipeline: [
+                {
+                  $match: {
+                    $expr: {
+                      $eq: ["$user_test_id", "$$userTestId"],
+                    },
+                  },
+                },
+              ],
+              as: "submissions",
+            },
+          },
+          {
+            $match: {
+              $expr: {
+                $and: [
+                  { $in: ["$_id", "$testDetails.questions"] },
+                  {
+                    $not: {
+                      $in: [
+                        "$_id",
+                        { $ifNull: ["$submissions.question_id", []] },
+                      ],
+                    },
+                  },
+                  {
+                    $gte: [
+                      "$difficulty",
+                      currentDifficulty + (shouldIncreaseDifficulty ? 1 : -1),
+                    ],
+                  },
+                ],
+              },
+            },
+          },
+          {
+            $limit: 1,
+          },
+          {
+            $project: {
+              _id: 0,
+              id: "$_id",
+              question: "$question",
+              difficulty: "$difficulty",
+              options: "$options",
+            },
+          },
+        ]);
+      }
+
+      shouldEndTest = nextQuestion ? false : true;
+
       // Update user test with new score, completed status, current difficulty, and consecutive correct answers
       await UserTest.updateOne(
         {
@@ -253,23 +349,6 @@ export default class TestService {
           consecutiveCorrect,
         }
       );
-
-      // Fetch next question based on current difficulty
-      let nextQuestion: IQuestion | null = null;
-      // If test should not end, fetch next question based on current difficulty
-      if (!shouldEndTest) {
-        nextQuestion = await Question.findOne(
-          {
-            difficulty: currentDifficulty + (shouldIncreaseDifficulty ? 1 : -1),
-          },
-          {
-            id: 1,
-            question: 1,
-            difficulty: 1,
-            options: 1,
-          }
-        );
-      }
 
       return {
         status: 200,
@@ -326,17 +405,9 @@ export default class TestService {
    */
   async getById(testId: string) {
     try {
-      const test = await Test.findOne(
-        {
-          _id: testId.toObjectId(),
-        },
-        {
-          id: 1,
-          description: 1,
-          title: 1,
-          url: 1,
-        }
-      );
+      const test = await Test.findOne({
+        _id: testId.toObjectId(),
+      });
 
       if (!test)
         return {
@@ -348,6 +419,175 @@ export default class TestService {
         status: 200,
         message: "Test fetched successfully",
         data: test,
+      };
+    } catch (error) {
+      return errorResponse(JSON.stringify(error));
+    }
+  }
+
+  /**
+   * Get user tests by user ID and return the tests with questions and submitted answers
+   * @param {string} userId - User ID
+   * @returns {Promise<IServiceResponse<IUserTests[] | null>>} - User tests
+   */
+  async getUserTests(
+    userId?: string
+  ): Promise<IServiceResponse<IUserTests[] | null>> {
+    try {
+      let tests = await UserTest.aggregate<IUserTests>([
+        {
+          $match: {
+            $expr: {
+              $and: [
+                {
+                  $eq: ["$completed", true],
+                },
+                {
+                  $eq: ["$user_id", userId!.toObjectId()],
+                },
+              ],
+            },
+          },
+        },
+        {
+          $lookup: {
+            from: "tests",
+            let: { testId: "$test_id" },
+            pipeline: [
+              {
+                $match: {
+                  $expr: { $eq: ["$_id", "$$testId"] },
+                },
+              },
+            ],
+            as: "test",
+          },
+        },
+        {
+          $unwind: { path: "$test", preserveNullAndEmptyArrays: true },
+        },
+        {
+          $lookup: {
+            from: "questions",
+            let: { questionIds: "$test.questions" },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $in: ["$_id", { $ifNull: ["$$questionIds", []] }],
+                  },
+                },
+              },
+              {
+                $project: {
+                  _id: 0,
+                  id: "$_id",
+                  question: "$question",
+                  difficulty: "$difficulty",
+                  answer: "$answer",
+                },
+              },
+            ],
+            as: "questions",
+          },
+        },
+        {
+          $lookup: {
+            from: "usertestsubmissions",
+            let: { userTestId: "$_id" },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $eq: ["$user_test_id", "$$userTestId"],
+                  },
+                },
+              },
+              {
+                $project: {
+                  _id: 0,
+                  question_id: 1,
+                  answer: 1,
+                },
+              },
+            ],
+            as: "submittedAnswers",
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            id: "$_id",
+            test_id: "$test_id",
+            score: 1,
+            completed: 1,
+            updatedAt: 1,
+            test: {
+              title: "$test.title",
+              description: "$test.description",
+              url: "$test.url",
+            },
+            questions: 1,
+            submittedAnswers: 1,
+          },
+        },
+      ]);
+
+      let correctCount = 0;
+      let wrongCount = 0;
+
+      tests.forEach((test) => {
+        correctCount = 0;
+        wrongCount = 0;
+        test.submittedAnswers.forEach((submission: IUserTestSubmission) => {
+          const question = test.questions.find(
+            (q) => q.id.toString() === submission.question_id.toString()
+          );
+
+          // Compare the answers
+          if (question && question.answer === submission.answer) {
+            correctCount++;
+          } else {
+            wrongCount++;
+          }
+        });
+        test.correctCount = correctCount;
+        test.wrongCount = wrongCount;
+      });
+
+      return {
+        status: 200,
+        message: "Tests fetched successfully",
+        data: tests,
+      };
+    } catch (error) {
+      return errorResponse(JSON.stringify(error));
+    }
+  }
+
+  /**
+   * Delete a test from the database
+   * @param {string} testId - Test ID
+   * @returns {Promise<IServiceResponse<boolean | null>>} - Test deleted status
+   */
+  async destroy(testId: string) {
+    try {
+      console.log(testId);
+
+      const test = await Test.findOneAndDelete({
+        _id: testId.toObjectId(),
+      });
+
+      if (!test)
+        return {
+          status: 404,
+          message: "Test not found",
+        };
+
+      return {
+        status: 200,
+        message: "Test deleted successfully",
+        data: true,
       };
     } catch (error) {
       return errorResponse(JSON.stringify(error));
